@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+blockchain/ethereum/artifacts/
+blockchain/ethereum/cache/
+blockchain/ethereum/typechain-types/
+blockchain/sui/build/
+
+# Logs & temporary files
+*.log
+npm-debug.log*
+.DS_Store
+thumbs.db
+coverage/
+.pytest_cache/
+
+# Developer-only: keep demo docs out of any static hosting
+
+# user-uploaded event photos
+backend/uploads/events/*
+!backend/uploads/events/.gitkeep

@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* EVENTRA — midnight forest + warm ivory + acid-lime */
+  --bg-primary: #101512;
+  --bg-secondary: #171F1A;
+  --bg-card: #1D2821;
+  --bg-elevated: #26352B;
+  --accent-violet: #C7E66A;
+  --accent-cyan: #83B9A5;
+  --text-primary: #F2F0E8;
+  --text-secondary: #A7B2A7;
+  --border-muted: #344238;
+  --status-success: #9BCB87;
+  --status-warning: #E9BD68;
+  --status-error: #E47F75;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'DM Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'DM Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Space Grotesk', 'DM Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 1.08;
+  }
+
+  h1, h2 { text-transform: none; }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  input, select, textarea { color-scheme: dark; }
+
+  option {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+  }
+
+  ::selection {
+    background: #C7E66A;
+    color: #101512;
+  }
+}
+
+.ticket-perforation {
+  border-top: 1px dashed var(--border-muted);
+  position: relative;
+}
+
+.ticket-perforation::before,
+.ticket-perforation::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-muted);
+}
+.ticket-perforation::before { left: -10px; }
+.ticket-perforation::after { right: -10px; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border-muted); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #C7E66A; }

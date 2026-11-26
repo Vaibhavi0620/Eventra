@@ -1,0 +1,269 @@
+// EVENTRA — PostgreSQL Database Schema (Prisma ORM)
+// Supports both Local Demonstration Mode (SIMULATED) and Blockchain Testnet Mode (SUI_TESTNET / ETHEREUM)
+
+generator client {
+  provider = "prisma-client-js"
+  
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ORGANIZER
+  ADMIN
+}
+
+enum EventStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum TicketStatus {
+  ACTIVE
+  LISTED_FOR_RESALE
+  USED
+  REVOKED
+}
+
+enum TransactionType {
+  PRIMARY_MINT
+  RESALE_PURCHASE
+  P2P_TRANSFER
+}
+
+enum TransactionStatus {
+  CONFIRMED_ON_CHAIN
+  SIMULATED_LOCAL
+  PENDING
+  FAILED
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  CANCELLED
+}
+
+enum FraudLabel {
+  NORMAL
+  SUSPICIOUS
+}
+
+enum ReviewStatus {
+  PENDING_REVIEW
+  ACKNOWLEDGED
+  DISMISSED
+  RESTRICTED
+}
+
+enum VerificationOutcome {
+  VALID_ADMITTED
+  REJECTED_ALREADY_USED
+  REJECTED_INVALID_SIGNATURE
+  REJECTED_WRONG_EVENT
+  REJECTED_NOT_FOUND
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  wallets             Wallet[]
+  organizedEvents     Event[]              @relation("OrganizerEvents")
+  ownedTickets        Ticket[]             @relation("CurrentOwnerTickets")
+  salesTransactions   Transaction[]        @relation("SellerTransactions")
+  boughtTransactions  Transaction[]        @relation("BuyerTransactions")
+  resaleListings      ResaleListing[]
+  verificationRecords QRVerificationLog[]  @relation("VerifierLogs")
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Wallet {
+  id            String   @id @default(uuid())
+  userId        String
+  blockchain    String
+  walletAddress String
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([blockchain, walletAddress])
+  @@index([userId])
+  @@map("wallets")
+}
+
+model Event {
+  id               String      @id @default(uuid())
+  organizerId      String
+  name             String
+  description      String
+  category         String
+  venue            String
+  imageUrl         String      @default("/images/default-event.svg")
+  startDate        DateTime
+  endDate          DateTime
+  totalTickets     Int
+  ticketsAvailable Int
+  originalPrice    Int
+  resaleCap        Int
+  status           EventStatus @default(UPCOMING)
+  onChainEventId   String?
+  createdAt        DateTime    @default(now())
+
+  organizer        User                @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  tickets          Ticket[]
+  verificationLogs QRVerificationLog[]
+
+  @@index([organizerId])
+  @@index([category])
+  @@index([status])
+  @@map("events")
+}
+
+model Ticket {
+  id                 String       @id @default(uuid())
+  eventId            String
+  currentOwnerId     String
+  blockchain         String
+  nftObjectId        String?      @unique
+  seatNumber         String       @default("GA-001")
+  tierName           String       @default("General Admission")
+  originalPrice      Int
+  maximumResalePrice Int
+  currentStatus      TicketStatus @default(ACTIVE)
+  transferCount      Int          @default(0)
+  resaleCount        Int          @default(0)
+  qrSignature        String
+  mintedAt           DateTime     @default(now())
+  usedAt             DateTime?
+
+  event            Event               @relation(fields: [eventId], references: [id])
+  currentOwner     User                @relation("CurrentOwnerTickets", fields: [currentOwnerId], references: [id])
+  transactions     Transaction[]
+  resaleListings   ResaleListing[]
+  verificationLogs QRVerificationLog[]
+
+  @@index([eventId])
+  @@index([currentOwnerId])
+  @@index([currentStatus])
+  @@map("tickets")
+}
+
+model Transaction {
+  id                String            @id @default(uuid())
+  ticketId          String
+  sellerId          String?
+  buyerId           String
+  transactionType   TransactionType
+  amount            Int
+  blockchain        String
+  transactionDigest String?           @unique
+  isSimulated       Boolean           @default(true)
+  status            TransactionStatus @default(SIMULATED_LOCAL)
+  createdAt         DateTime          @default(now())
+
+  ticket      Ticket       @relation(fields: [ticketId], references: [id])
+  seller      User?        @relation("SellerTransactions", fields: [sellerId], references: [id])
+  buyer       User         @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  fraudAlerts FraudAlert[]
+
+  @@index([ticketId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@map("transactions")
+}
+
+model ResaleListing {
+  id          String        @id @default(uuid())
+  ticketId    String
+  sellerId    String
+  askingPrice Int
+  status      ListingStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  seller User   @relation(fields: [sellerId], references: [id])
+
+  @@index([ticketId])
+  @@index([sellerId])
+  @@index([status])
+  @@map("resale_listings")
+}
+
+model FraudAlert {
+  id                   String       @id @default(uuid())
+  transactionId        String
+  walletAddress        String
+  riskScore            Float
+  predictedLabel       FraudLabel
+  reasons              String[]
+  ticketsBoughtFeature Int          @default(1)
+  transfersFeature     Int          @default(0)
+  resalesFeature       Int          @default(0)
+  timeDiffSeconds      Float        @default(3600)
+  priceRatio           Float        @default(1.0)
+  txFrequencyPerHour   Float        @default(1.0)
+  reviewStatus         ReviewStatus @default(PENDING_REVIEW)
+  reviewerNotes        String?
+  createdAt            DateTime     @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@index([predictedLabel])
+  @@index([reviewStatus])
+  @@map("fraud_alerts")
+}
+
+model BenchmarkResult {
+  id                 String   @id @default(uuid())
+  blockchain         String
+  operationType      String
+  transactionCost    String
+  gasNumeric         Float
+  confirmationTimeMs Float
+  success            Boolean
+  network            String
+  transactionDigest  String?
+  notes              String?
+  measuredAt         DateTime @default(now())
+
+  @@index([blockchain])
+  @@index([operationType])
+  @@map("benchmark_results")
+}
+
+model QRVerificationLog {
+  id                 String              @id @default(uuid())
+  ticketId           String?
+  eventId            String
+  verificationResult VerificationOutcome
+  scannedAt          DateTime            @default(now())
+  verifierId         String
+  notes              String?
+
+  ticket   Ticket? @relation(fields: [ticketId], references: [id])
+  event    Event   @relation(fields: [eventId], references: [id])
+  verifier User    @relation("VerifierLogs", fields: [verifierId], references: [id])
+
+  @@index([ticketId])
+  @@index([eventId])
+  @@index([scannedAt])
+  @@map("qr_verification_logs")
+}
